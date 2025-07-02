@@ -182,4 +182,89 @@ class User extends Authenticatable
             ->whereNotNull('password_hash')
             ->count();
     }
+
+    /**
+     * Get the total number of clicks across all user's URLs
+     */
+    public function totalClicks()
+    {
+        return $this->urls()
+            ->withCount('clicks')
+            ->get()
+            ->sum('clicks_count');
+    }
+
+    /**
+     * Get the average clicks per URL for this user
+     */
+    public function averageClicks()
+    {
+        $totalUrls = $this->urls()->count();
+        if ($totalUrls === 0) {
+            return 0;
+        }
+
+        return round($this->totalClicks() / $totalUrls, 1);
+    }
+
+    /**
+     * Get the total clicks for this user's URLs in the current month
+     */
+    public function clicksThisMonth()
+    {
+        $startOfMonth = now()->startOfMonth();
+        $endOfMonth = now()->endOfMonth();
+
+        return \DB::table('clicks')
+            ->join('urls', 'clicks.url_id', '=', 'urls.id')
+            ->where('urls.user_id', $this->id)
+            ->whereBetween('clicks.clicked_at', [$startOfMonth, $endOfMonth])
+            ->count();
+    }
+
+    /**
+     * Get the user's most popular URL (by clicks)
+     */
+    public function mostPopularUrl()
+    {
+        return $this->urls()
+            ->withCount('clicks')
+            ->orderBy('clicks_count', 'desc')
+            ->first();
+    }
+
+    /**
+     * Get recent URLs created by this user
+     */
+    public function recentUrls($limit = 5)
+    {
+        return $this->urls()
+            ->latest()
+            ->limit($limit)
+            ->get();
+    }
+
+    /**
+     * Get URLs created in the last N days
+     */
+    public function urlsInLastDays($days = 7)
+    {
+        return $this->urls()
+            ->where('created_at', '>=', now()->subDays($days))
+            ->count();
+    }
+
+    /**
+     * Get clicks in the last N days across all user's URLs
+     */
+    public function clicksInLastDays($days = 7)
+    {
+        $cutoffDate = now()->subDays($days);
+
+        return \DB::table('clicks')
+            ->join('urls', 'clicks.url_id', '=', 'urls.id')
+            ->where('urls.user_id', $this->id)
+            ->where('clicks.clicked_at', '>=', $cutoffDate)
+            ->count();
+    }
 }

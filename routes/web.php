@@ -3,15 +3,14 @@
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\RedirectController;
+use App\Http\Controllers\UrlController;
 use Illuminate\Support\Facades\Route;
 
 // Homepage route - update to use our HomeController
 Route::get('/', [HomeController::class, 'index'])->name('home');
 
-// Dashboard route (from Breeze)
-Route::get('/dashboard', function () {
-    return view('dashboard');
-})->middleware(['auth', 'verified'])->name('dashboard');
+// Dashboard route - now handled by UrlController
+Route::get('/dashboard', [UrlController::class, 'index'])->middleware(['auth', 'verified'])->name('dashboard');
 
 // Profile routes (from Breeze)
 Route::middleware('auth')->group(function () {
@@ -28,6 +27,12 @@ Route::get('/preview/{shortCode}', [RedirectController::class, 'preview'])->name
 // Bulk URL shortening (requires authentication)
 Route::middleware('auth')->group(function () {
     Route::post('/bulk-shorten', [HomeController::class, 'bulkShorten'])->name('url.bulk-shorten');
+
+    // URL Management routes
+    Route::resource('urls', UrlController::class)->except(['index', 'create', 'store']);
+    Route::patch('/urls/{url}/status', [UrlController::class, 'updateStatus'])->name('urls.status');
+    Route::post('/urls/bulk-action', [UrlController::class, 'bulkAction'])->name('urls.bulk-action');
+    Route::get('/urls/{url}/analytics', [UrlController::class, 'analytics'])->name('urls.analytics');
 });
 
 // Password-protected URL routes
