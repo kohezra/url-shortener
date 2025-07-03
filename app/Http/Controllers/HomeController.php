@@ -112,6 +112,14 @@ class HomeController extends Controller
     }
 
     /**
+     * Show URL details and QR code (aliased method for route compatibility)
+     */
+    public function info(string $shortCode): View
+    {
+        return $this->show($shortCode);
+    }
+
+    /**
      * Show URL details and QR code
      */
     public function show(string $shortCode): View

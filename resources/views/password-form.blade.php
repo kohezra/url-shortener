@@ -46,7 +46,7 @@
                     </div>
                 @endif
                 
-                <form method="POST" action="{{ url($url->short_code) }}">
+                <form method="POST" action="{{ route('url.password.submit', ['shortCode' => $url->short_code]) }}">
                     @csrf
                     
                     <div class="mb-4">

@@ -9,6 +9,9 @@ use Illuminate\Support\Facades\Route;
 // Homepage route - update to use our HomeController
 Route::get('/', [HomeController::class, 'index'])->name('home');
 
+// Authentication routes - MUST be before catch-all route
+require __DIR__ . '/auth.php';
+
 // Dashboard route - now handled by UrlController
 Route::get('/dashboard', [UrlController::class, 'index'])->middleware(['auth', 'verified'])->name('dashboard');
 
@@ -39,10 +42,7 @@ Route::middleware('auth')->group(function () {
 Route::get('/password/{shortCode}', [RedirectController::class, 'showPasswordForm'])->name('url.password');
 Route::post('/password/{shortCode}', [RedirectController::class, 'handlePassword'])->name('url.password.submit');
 
-// Main redirect route (must be last to avoid conflicts)
-Route::get('/{shortCode}', [RedirectController::class, 'redirect'])
+// Main redirect route (MUST be last to avoid conflicts with other routes)
+Route::match(['GET', 'POST'], '/{shortCode}', [RedirectController::class, 'redirect'])
     ->where('shortCode', '[a-zA-Z0-9]+')
     ->name('url.redirect');
-
-// Authentication routes
-require __DIR__ . '/auth.php';

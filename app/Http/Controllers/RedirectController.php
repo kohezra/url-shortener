@@ -17,7 +17,7 @@ class RedirectController extends Controller
     ) {}
 
     /**
-     * Handle short URL redirection
+     * Handle short URL redirection (GET and POST)
      */
     public function redirect(Request $request, string $shortCode): RedirectResponse|View|Response
     {
@@ -35,7 +35,13 @@ class RedirectController extends Controller
 
         // Check if URL is password protected
         if ($url->isPasswordProtected()) {
-            return $this->handlePasswordProtected($request, $url);
+            // If this is a POST request with password, handle it directly
+            if ($request->isMethod('POST') && $request->has('password')) {
+                return $this->handlePasswordSubmission($request, $url);
+            }
+
+            // For GET requests, redirect to password form
+            return redirect()->route('url.password', ['shortCode' => $shortCode]);
         }
 
         // Track the click
@@ -46,7 +52,77 @@ class RedirectController extends Controller
     }
 
     /**
-     * Handle password protected URLs
+     * Handle password submission directly to short URL
+     */
+    private function handlePasswordSubmission(Request $request, Url $url): RedirectResponse|View
+    {
+        $password = $request->input('password');
+
+        if ($this->urlShortenerService->validateUrlPassword($url, $password)) {
+            // Track the click
+            $this->trackClick($request, $url);
+            return redirect()->away($url->original_url);
+        } else {
+            return view('password-form', [
+                'url' => $url,
+                'error' => 'Invalid password. Please try again.'
+            ]);
+        }
+    }
+
+    /**
+     * Show password form for protected URLs
+     */
+    public function showPasswordForm(string $shortCode): View|Response
+    {
+        $url = $this->urlShortenerService->getUrlByShortCode($shortCode);
+
+        if (!$url) {
+            return $this->handleNotFound($shortCode);
+        }
+
+        if (!$url->isPasswordProtected()) {
+            return redirect()->route('url.redirect', ['shortCode' => $shortCode]);
+        }
+
+        return view('password-form', ['url' => $url]);
+    }
+
+    /**
+     * Handle password submission for protected URLs
+     */
+    public function handlePassword(Request $request, string $shortCode): RedirectResponse|View
+    {
+        $url = $this->urlShortenerService->getUrlByShortCode($shortCode);
+
+        if (!$url) {
+            return $this->handleNotFound($shortCode);
+        }
+
+        if (!$url->isPasswordProtected()) {
+            return redirect()->route('url.redirect', ['shortCode' => $shortCode]);
+        }
+
+        $request->validate([
+            'password' => 'required|string'
+        ]);
+
+        $password = $request->input('password');
+
+        if ($this->urlShortenerService->validateUrlPassword($url, $password)) {
+            // Track the click
+            $this->trackClick($request, $url);
+            return redirect()->away($url->original_url);
+        } else {
+            return view('password-form', [
+                'url' => $url,
+                'error' => 'Invalid password. Please try again.'
+            ]);
+        }
+    }
+
+    /**
+     * Handle password protected URLs (private method for internal use)
      */
     private function handlePasswordProtected(Request $request, Url $url): RedirectResponse|View
     {
